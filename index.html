@@ -18,6 +18,10 @@
     .tooltip { position: absolute; background: #222; color: #fff; padding: 6px; border-radius: 4px; font-size: 0.75rem; display: none; z-index: 999; max-width: 200px; }
     .modal-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 1000; }
     .modal { background: #fff; padding: 20px; border-radius: 10px; width: 300px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    /* List modal adjustments */
+    #listModal ul { list-style: none; padding: 0; margin: 0; }
+    #listModal ul li { padding: 8px 0; border-bottom: 1px solid #eee; }
+    #listModal ul li:last-child { border-bottom: none; }
     .modal h2 { margin-top: 0; }
     .modal input[type="text"] { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
     .modal-actions { display: flex; justify-content: space-between; }
@@ -28,6 +32,7 @@
     body.dark .day { border-color: #333; }
     body.dark .tooltip { background: #444; }
     body.dark .modal { background: #222; color: #fff; }
+    body.dark #listModal ul li { border-color: #333; }
     body.dark .modal input[type="text"] { background: #333; color: white; border-color: #555; }
     body.dark .modal-actions button { background: #333; color: #fff; border: 1px solid #555; }
   </style>
@@ -50,7 +55,7 @@
       <label for="interactionMode">Interaction:</label>
       <select id="interactionMode">
         <option value="classic">Classic</option>
-        <option value="tap-list">Mobile</option>
+        <option value="tap-list">Tap for List + Long-Press to Add</option>
       </select>
     </div>
   </div>
@@ -149,94 +154,3 @@ function saveEvent() {
   const title = eventTitle.value.trim(), color = eventColor.value || 'purple';
   events[currentDateKey] = events[currentDateKey]||[];
   if (editingIndex!==null) events[currentDateKey][editingIndex] = {title,color};
-  else events[currentDateKey].push({title,color});
-  localStorage.setItem('calendarEvents', JSON.stringify(events));
-  closeModal(); renderCalendar();
-}
-function deleteEvent() {
-  if (editingIndex!==null) {
-    events[currentDateKey].splice(editingIndex,1);
-    if (!events[currentDateKey].length) delete events[currentDateKey];
-    localStorage.setItem('calendarEvents', JSON.stringify(events));
-  }
-  closeModal(); renderCalendar();
-}
-
-// Wire buttons
-saveBtn.onclick = saveEvent;
-deleteBtn.onclick = deleteEvent;
-closeListBtn.onclick = () => modalBackdrop.style.display='none';
-
-function showListModal(dateKey) {
-  const list = events[dateKey]||[];
-  document.getElementById('listDate').textContent = dateKey;
-  document.getElementById('eventList').innerHTML = '';
-  list.forEach((ev,i) => {
-    const li = document.createElement('li'); li.textContent = ev.title;
-    li.onclick = () => { openModal(dateKey,i); hideTooltip(); };
-    document.getElementById('eventList').appendChild(li);
-  });
-  eventModal.style.display='none'; listModal.style.display='block'; modalBackdrop.style.display='flex';
-}
-function hideListModal() { listModal.style.display='none'; }
-
-// Interaction listeners merged
-function attachInteractions(dayEl, dateKey) {
-  const mode = interactionSelect.value;
-  dayEl.onclick = dayEl.ontouchstart = dayEl.ontouchend = null;
-  if (mode === 'tap-list') {
-    // Tap shows list or new modal if no events
-    dayEl.onclick = () => events[dateKey] ? showListModal(dateKey) : openModal(dateKey);
-    // Long-press always adds new
-    let timer;
-    dayEl.ontouchstart = dayEl.onmousedown = () => { timer = setTimeout(() => openModal(dateKey), 600); };
-    dayEl.ontouchend = dayEl.onmouseup = () => { clearTimeout(timer); };
-  } else {
-    // Classic: tap to add/edit
-    dayEl.onclick = () => openModal(dateKey);
-  }
-}
-
-// Render
-function renderCalendar() {
-  calendarEl.innerHTML = '';
-  for (let m=0; m<12; m++) {
-    const monthEl = document.createElement('div'); monthEl.className='month'; monthEl.innerHTML = `<h3>${months[m]}</h3>`;
-    const daysEl = document.createElement('div'); daysEl.className='days';
-    const first = new Date(year,m,1).getDay(), pad = first===0?6:first-1;
-    for (let i=0; i<pad; i++) daysEl.appendChild(document.createElement('div'));
-    for (let d=1; d<=daysInMonth(m,year); d++) {
-      const dateKey = `${year}-${m+1}-${d}`;
-      const dayEl = document.createElement('div'); dayEl.className='day'; dayEl.textContent=d;
-      (events[dateKey]||[]).forEach((ev,i)=>{
-        const bar = document.createElement('div'); bar.className='event-bar'; bar.style.bottom=`${2+i*8}px`; bar.style.backgroundColor=ev.color; dayEl.appendChild(bar);
-      });
-      if ((events[dateKey]||[]).length) {
-        dayEl.onmouseenter = e => {
-          const items = events[dateKey].map((ev,i)=>{
-            const item = document.createElement('div'); item.textContent = '• ' + ev.title;
-            item.onclick = () => { openModal(dateKey,i); hideTooltip(); };
-            return item;
-          });
-          tooltipTimer = setTimeout(() => showTooltip(items,e.pageX+10,e.pageY), 0);
-        };
-        dayEl.onmouseleave = () => { tooltipTimer = setTimeout(hideTooltip,300); };
-      }
-      attachInteractions(dayEl, dateKey);
-      daysEl.appendChild(dayEl);
-    }
-    monthEl.appendChild(daysEl); calendarEl.appendChild(monthEl);
-  }
-}
-
-function showTooltip(elements,x,y) {
-  tooltip.innerHTML=''; elements.forEach(el=>tooltip.appendChild(el));
-  tooltip.style.left = x+'px'; tooltip.style.top = y+'px'; tooltip.style.display='block';
-}
-function hideTooltip() { tooltip.style.display='none'; clearTimeout(tooltipTimer); }
-
-// Init
-initTheme(); initInteraction(); renderCalendar();
-</script>
-</body>
-</html>
