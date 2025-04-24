@@ -1,151 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Year Calendar</title>
-  <link rel="manifest" href="manifest.json">
   <style>
-    :root {
-      --bg: #f7f9fc;
-      --text: #333;
-      --modal-bg: #fff;
-    }
-    [data-theme='dark'] {
-      --bg: #111;
-      --text: #f5f5f5;
-      --modal-bg: #1e1e1e;
-    }
     * { box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      background-color: var(--bg);
-      color: var(--text);
-    }
-    h1 {
-      text-align: center;
-      padding: 1rem;
-      font-size: 2rem;
-    }
-    .controls {
-      text-align: center;
-      margin-bottom: 1rem;
-    }
-    .calendar {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1rem;
-      padding: 1rem;
-    }
-    .month {
-      background: var(--modal-bg);
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      width: 300px;
-      padding: 10px;
-    }
-    .month h3 {
-      text-align: center;
-      margin: 0.5rem 0;
-    }
-    .days {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-    }
-    .day {
-      border: 1px solid #eee;
-      min-height: 60px;
-      padding: 4px;
-      position: relative;
-      cursor: pointer;
-      font-size: 0.8rem;
-      touch-action: manipulation;
-    }
-    .event-bar {
-      position: absolute;
-      height: 6px;
-      border-radius: 3px;
-      left: 2px;
-      right: 2px;
-    }
-    .tooltip {
-      position: absolute;
-      background: #222;
-      color: #fff;
-      padding: 6px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      display: none;
-      z-index: 999;
-      pointer-events: none;
-    }
-    .modal-backdrop, .event-list-backdrop {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.4);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-    .modal, .event-list-modal {
-      background: var(--modal-bg);
-      padding: 20px;
-      border-radius: 10px;
-      width: 300px;
-      max-height: 80vh;
-      overflow-y: auto;
-    }
-    .modal h2, .event-list-modal h3 {
-      margin-top: 0;
-    }
-    .modal input[type="text"] {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .modal-actions {
-      display: flex;
-      justify-content: space-between;
-    }
-    .modal-actions button {
-      flex: 1;
-      margin: 0 5px;
-      padding: 8px;
-    }
-    .event-list-modal ul {
-      padding: 0;
-      list-style: none;
-    }
-    .event-list-modal li {
-      padding: 8px;
-      margin-bottom: 6px;
-      background: #ccc;
-      border-radius: 4px;
-      cursor: pointer;
-    }
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #f7f9fc; color: #333; }
+    h1 { text-align: center; padding: 1rem; font-size: 2rem; }
+    .controls { text-align: center; margin-bottom: 1rem; }
+    .calendar { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; padding: 1rem; }
+    .month { background: #fff; border: 1px solid #ddd; border-radius: 8px; width: 300px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .month h3 { text-align: center; margin: 0.5rem 0; }
+    .days { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .day { border: 1px solid #eee; min-height: 60px; padding: 4px; position: relative; cursor: pointer; font-size: 0.8rem; touch-action: manipulation; }
+    .event-bar { position: absolute; height: 6px; border-radius: 3px; left: 2px; right: 2px; }
+    .tooltip { position: absolute; background: #222; color: #fff; padding: 6px; border-radius: 4px; font-size: 0.75rem; display: none; z-index: 999; max-width: 200px; pointer-events: none; }
+    .modal-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 1000; }
+    .modal { background: #fff; padding: 20px; border-radius: 10px; width: 300px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    .modal h2 { margin-top: 0; }
+    .modal input[type="text"] { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    .modal-actions { display: flex; justify-content: space-between; }
+    .modal-actions button { flex: 1; margin: 0 5px; padding: 8px; font-weight: bold; }
   </style>
 </head>
 <body>
   <h1>Year Calendar (2025)</h1>
   <div class="controls">
-    <label>Theme: 
-      <select id="themeSelector">
-        <option value="auto">Auto</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
-    </label>
     <button id="exportBtn">Export</button>
     <button id="importBtn">Import</button>
     <button id="clearBtn">Clear All</button>
-    <input type="file" style="display:none;" id="importFile" />
+    <input type="file" id="fileInput" style="display:none;" />
   </div>
   <div class="calendar" id="calendar"></div>
   <div class="tooltip" id="tooltip"></div>
@@ -160,12 +45,6 @@
       </div>
     </div>
   </div>
-  <div class="event-list-backdrop" id="eventListBackdrop">
-    <div class="event-list-modal">
-      <h3>Events on <span id="eventListDate"></span></h3>
-      <ul id="eventList"></ul>
-    </div>
-  </div>
 <script>
 const calendarEl = document.getElementById('calendar');
 const modalBackdrop = document.getElementById('modalBackdrop');
@@ -173,30 +52,20 @@ const modalTitle = document.getElementById('modalTitle');
 const eventTitle = document.getElementById('eventTitle');
 const eventColor = document.getElementById('eventColor');
 const tooltip = document.getElementById('tooltip');
-const themeSelector = document.getElementById('themeSelector');
-const eventListBackdrop = document.getElementById('eventListBackdrop');
-const eventListDate = document.getElementById('eventListDate');
-const eventList = document.getElementById('eventList');
+const fileInput = document.getElementById('fileInput');
 
 let events = JSON.parse(localStorage.getItem('calendarEvents') || '{}');
 let currentDateKey = null;
 let editingIndex = null;
+let tooltipTimer = null;
+
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const year = 2025;
+const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-function applyTheme(mode) {
-  if (mode === 'auto') {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-  } else {
-    document.documentElement.setAttribute('data-theme', mode);
-  }
-  localStorage.setItem('calendarTheme', mode);
+function daysInMonth(month, year) {
+  return new Date(year, month + 1, 0).getDate();
 }
-
-const savedTheme = localStorage.getItem('calendarTheme') || 'auto';
-themeSelector.value = savedTheme;
-applyTheme(savedTheme);
-themeSelector.onchange = () => applyTheme(themeSelector.value);
 
 function openModal(dateKey, index = null) {
   currentDateKey = dateKey;
@@ -207,12 +76,14 @@ function openModal(dateKey, index = null) {
   modalTitle.textContent = index !== null ? 'Edit Event' : 'New Event';
   modalBackdrop.style.display = 'flex';
 }
+
 function closeModal() {
   modalBackdrop.style.display = 'none';
   currentDateKey = null;
   editingIndex = null;
 }
-document.getElementById('saveEvent').onclick = () => {
+
+document.getElementById('saveEvent').onclick = function() {
   const title = eventTitle.value.trim();
   const color = eventColor.value.trim() || 'purple';
   if (!title || !currentDateKey) return;
@@ -226,7 +97,8 @@ document.getElementById('saveEvent').onclick = () => {
   closeModal();
   renderCalendar();
 };
-document.getElementById('deleteEvent').onclick = () => {
+
+document.getElementById('deleteEvent').onclick = function() {
   if (editingIndex !== null && events[currentDateKey]) {
     events[currentDateKey].splice(editingIndex, 1);
     if (events[currentDateKey].length === 0) delete events[currentDateKey];
@@ -235,72 +107,67 @@ document.getElementById('deleteEvent').onclick = () => {
   closeModal();
   renderCalendar();
 };
-document.getElementById('clearBtn').onclick = () => {
-  if (confirm('Clear all events?')) {
-    events = {};
-    localStorage.setItem('calendarEvents', '{}');
-    renderCalendar();
-  }
+
+document.getElementById('exportBtn').onclick = function() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(events));
+  const anchor = document.createElement('a');
+  anchor.href = dataStr;
+  anchor.download = "calendar_events_2025.json";
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
 };
-document.getElementById('exportBtn').onclick = () => {
-  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(events));
-  const a = document.createElement('a');
-  a.href = dataStr;
-  a.download = 'calendar_events.json';
-  a.click();
-};
-document.getElementById('importBtn').onclick = () => {
-  document.getElementById('importFile').click();
-};
-document.getElementById('importFile').onchange = e => {
-  const file = e.target.files[0];
+
+document.getElementById('importBtn').onclick = () => fileInput.click();
+fileInput.onchange = function(e) {
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = function(evt) {
     try {
-      events = JSON.parse(reader.result);
+      events = JSON.parse(evt.target.result);
       localStorage.setItem('calendarEvents', JSON.stringify(events));
       renderCalendar();
     } catch {
-      alert('Invalid file');
+      alert("Invalid file format.");
     }
   };
-  reader.readAsText(file);
+  reader.readAsText(e.target.files[0]);
 };
 
-function showEventList(dateKey) {
-  const list = events[dateKey] || [];
-  eventListDate.textContent = dateKey;
-  eventList.innerHTML = '';
-  list.forEach((evt, i) => {
-    const li = document.createElement('li');
-    li.textContent = evt.title;
-    li.onclick = () => {
-      openModal(dateKey, i);
-      eventListBackdrop.style.display = 'none';
-    };
-    eventList.appendChild(li);
-  });
-  eventListBackdrop.style.display = 'flex';
+tooltip.addEventListener('mouseenter', () => clearTimeout(tooltipTimer));
+tooltip.addEventListener('mouseleave', () => hideTooltip());
+
+function showTooltip(elements, x, y) {
+  tooltip.innerHTML = '';
+  elements.forEach(el => tooltip.appendChild(el));
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+  tooltip.style.display = 'block';
 }
-eventListBackdrop.onclick = () => eventListBackdrop.style.display = 'none';
+
+function hideTooltip() {
+  tooltip.style.display = 'none';
+  clearTimeout(tooltipTimer);
+}
 
 function renderCalendar() {
   calendarEl.innerHTML = '';
-  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   for (let m = 0; m < 12; m++) {
     const monthEl = document.createElement('div');
     monthEl.className = 'month';
-    monthEl.innerHTML = `<h3>${months[m]}</h3>`;
+    monthEl.innerHTML = '<h3>' + months[m] + '</h3>';
     const daysEl = document.createElement('div');
     daysEl.className = 'days';
-    const firstDay = new Date(2025, m, 1).getDay();
-    const totalDays = new Date(2025, m+1, 0).getDate();
-    for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) daysEl.appendChild(document.createElement('div'));
+    const firstDay = new Date(year, m, 1).getDay();
+    const pad = (firstDay === 0 ? 6 : firstDay - 1);
+    for (let i = 0; i < pad; i++) daysEl.appendChild(document.createElement('div'));
+    const totalDays = daysInMonth(m, year);
+
     for (let d = 1; d <= totalDays; d++) {
-      const dateKey = `2025-${m+1}-${d}`;
+      const dateKey = `${year}-${m + 1}-${d}`;
       const dayEl = document.createElement('div');
       dayEl.className = 'day';
       dayEl.textContent = d;
+
       const dayEvents = events[dateKey] || [];
       dayEvents.forEach((evt, i) => {
         const bar = document.createElement('div');
@@ -309,28 +176,34 @@ function renderCalendar() {
         bar.style.backgroundColor = evt.color || 'purple';
         dayEl.appendChild(bar);
       });
-      if (!isTouchDevice && dayEvents.length) {
-        dayEl.addEventListener('mouseenter', e => {
-          tooltip.innerHTML = dayEvents.map(e => `<div>• ${e.title}</div>`).join('');
-          tooltip.style.left = e.pageX + 10 + 'px';
-          tooltip.style.top = e.pageY + 'px';
-          tooltip.style.display = 'block';
-        });
-        dayEl.addEventListener('mouseleave', () => tooltip.style.display = 'none');
-      }
-      dayEl.addEventListener('click', () => {
-        if (!isTouchDevice || dayEvents.length === 0) {
-          openModal(dateKey);
-        } else {
-          showEventList(dateKey);
-        }
-      });
+
       if (isTouchDevice) {
         dayEl.addEventListener('touchstart', e => {
           dayEl._touchTimer = setTimeout(() => openModal(dateKey), 600);
         });
         dayEl.addEventListener('touchend', () => clearTimeout(dayEl._touchTimer));
+      } else {
+        dayEl.addEventListener('click', () => openModal(dateKey));
+        if (dayEvents.length) {
+          dayEl.addEventListener('mouseenter', e => {
+            const tooltipItems = dayEvents.map((evt, i) => {
+              const item = document.createElement('div');
+              item.textContent = '• ' + evt.title;
+              item.style.cursor = 'pointer';
+              item.onclick = () => {
+                openModal(dateKey, i);
+                hideTooltip();
+              };
+              return item;
+            });
+            showTooltip(tooltipItems, e.pageX + 10, e.pageY);
+          });
+          dayEl.addEventListener('mouseleave', () => {
+            tooltipTimer = setTimeout(() => hideTooltip(), 300);
+          });
+        }
       }
+
       daysEl.appendChild(dayEl);
     }
     monthEl.appendChild(daysEl);
