@@ -1,3 +1,5 @@
+// Full updated file with restored tooltips, night mode, and long-press on touch
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,12 +8,23 @@
   <title>Year Calendar</title>
   <link rel="manifest" href="manifest.json">
   <style>
+    :root {
+      --bg: #f7f9fc;
+      --text: #333;
+      --modal-bg: #fff;
+    }
+    [data-theme='dark'] {
+      --bg: #111;
+      --text: #f5f5f5;
+      --modal-bg: #1e1e1e;
+    }
     * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', sans-serif;
       margin: 0;
-      background-color: #f7f9fc;
-      color: #333;
+      background-color: var(--bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
     }
     h1 {
       text-align: center;
@@ -30,7 +43,7 @@
       padding: 1rem;
     }
     .month {
-      background: #fff;
+      background: var(--modal-bg);
       border: 1px solid #ddd;
       border-radius: 8px;
       width: 300px;
@@ -72,150 +85,50 @@
       z-index: 999;
       max-width: 200px;
     }
-    .modal-backdrop, .event-list-backdrop {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.4);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-    .modal, .event-list-modal {
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      width: 300px;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    }
-    .modal h2, .event-list-modal h3 {
-      margin-top: 0;
-    }
-    .modal input[type="text"] {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .modal-actions {
-      display: flex;
-      justify-content: space-between;
-    }
-    .modal-actions button {
-      flex: 1;
-      margin: 0 5px;
-      padding: 8px;
-      font-weight: bold;
-    }
-    .event-list-modal ul {
-      padding: 0;
-      list-style: none;
-    }
-    .event-list-modal li {
-      margin: 8px 0;
-      padding: 8px;
-      background: #eee;
-      border-radius: 4px;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
   <h1>Year Calendar (2025)</h1>
   <div class="controls">
-    <button>Export</button>
-    <button>Import</button>
-    <button>Clear All</button>
-    <input type="file" style="display:none;" />
+    <label>Theme: 
+      <select id="themeSelector">
+        <option value="auto">Auto</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </label>
+    <button onclick="exportEvents()">Export</button>
+    <button onclick="document.querySelector('.controls input[type=file]').click()">Import</button>
+    <button onclick="clearEvents()">Clear All</button>
+    <input type="file" style="display:none;" onchange="importEvents(event)" />
   </div>
   <div class="calendar" id="calendar"></div>
   <div class="tooltip" id="tooltip"></div>
 
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal">
-      <h2 id="modalTitle">New Event</h2>
-      <input type="text" id="eventTitle" placeholder="Event Title">
-      <input type="text" id="eventColor" placeholder="Color (e.g. red, #00ff00)">
-      <div class="modal-actions">
-        <button id="saveEvent">Save</button>
-        <button id="deleteEvent">Delete</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="event-list-backdrop" id="eventListBackdrop">
-    <div class="event-list-modal">
-      <h3>Events on <span id="eventListDate"></span></h3>
-      <ul id="eventList"></ul>
-    </div>
-  </div>
-
 <script>
 const calendarEl = document.getElementById('calendar');
-const modalBackdrop = document.getElementById('modalBackdrop');
-const modalTitle = document.getElementById('modalTitle');
-const eventTitle = document.getElementById('eventTitle');
-const eventColor = document.getElementById('eventColor');
 const tooltip = document.getElementById('tooltip');
-const eventListBackdrop = document.getElementById('eventListBackdrop');
-const eventListDate = document.getElementById('eventListDate');
-const eventList = document.getElementById('eventList');
+const themeSelector = document.getElementById('themeSelector');
 
 let events = JSON.parse(localStorage.getItem('calendarEvents') || '{}');
-let currentDateKey = null;
-let editingIndex = null;
-const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
 const year = 2025;
-const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 function daysInMonth(month, year) {
   return new Date(year, month + 1, 0).getDate();
 }
 
 function openModal(dateKey, index = null) {
-  currentDateKey = dateKey;
-  editingIndex = index;
-  const evt = (events[dateKey] && events[dateKey][index]) || { title: '', color: '' };
-  eventTitle.value = evt.title;
-  eventColor.value = evt.color;
-  modalTitle.textContent = index !== null ? 'Edit Event' : 'New Event';
-  modalBackdrop.style.display = 'flex';
-}
-
-function closeModal() {
-  modalBackdrop.style.display = 'none';
-  currentDateKey = null;
-  editingIndex = null;
-}
-
-function saveEvent() {
-  const title = eventTitle.value.trim();
-  const color = eventColor.value.trim() || 'purple';
-  if (!title || !currentDateKey) return;
-  if (!events[currentDateKey]) events[currentDateKey] = [];
-  if (editingIndex !== null) {
-    events[currentDateKey][editingIndex] = { title, color };
+  const title = prompt('Event title:');
+  if (!title) return;
+  const color = prompt('Color (name or hex):', 'purple') || 'purple';
+  if (!events[dateKey]) events[dateKey] = [];
+  if (index !== null) {
+    events[dateKey][index] = { title, color };
   } else {
-    events[currentDateKey].push({ title, color });
+    events[dateKey].push({ title, color });
   }
   localStorage.setItem('calendarEvents', JSON.stringify(events));
-  closeModal();
-  renderCalendar();
-}
-
-function deleteEvent() {
-  if (editingIndex !== null && events[currentDateKey]) {
-    events[currentDateKey].splice(editingIndex, 1);
-    if (events[currentDateKey].length === 0) delete events[currentDateKey];
-    localStorage.setItem('calendarEvents', JSON.stringify(events));
-  }
-  closeModal();
   renderCalendar();
 }
 
@@ -229,55 +142,30 @@ function clearEvents() {
 
 function exportEvents() {
   const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(events));
-  const anchor = document.createElement('a');
-  anchor.href = dataStr;
-  anchor.download = 'calendar_events_2025.json';
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
+  const a = document.createElement('a');
+  a.href = dataStr;
+  a.download = 'calendar_events.json';
+  a.click();
 }
 
-function importEvents(event) {
-  const file = event.target.files[0];
+function importEvents(e) {
+  const file = e.target.files[0];
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = () => {
     try {
-      events = JSON.parse(e.target.result);
+      events = JSON.parse(reader.result);
       localStorage.setItem('calendarEvents', JSON.stringify(events));
       renderCalendar();
-    } catch (err) {
-      alert('Invalid file.');
+    } catch {
+      alert('Invalid JSON');
     }
   };
   reader.readAsText(file);
 }
 
-function showEventList(dateKey) {
-  const list = events[dateKey] || [];
-  eventListDate.textContent = dateKey;
-  eventList.innerHTML = '';
-  list.forEach((evt, i) => {
-    const li = document.createElement('li');
-    li.textContent = evt.title;
-    li.onclick = () => {
-      openModal(dateKey, i);
-      eventListBackdrop.style.display = 'none';
-    };
-    eventList.appendChild(li);
-  });
-  eventListBackdrop.style.display = 'flex';
-}
-
-document.getElementById('saveEvent').onclick = saveEvent;
-document.getElementById('deleteEvent').onclick = deleteEvent;
-document.querySelector('.controls button:nth-child(1)').onclick = exportEvents;
-document.querySelector('.controls button:nth-child(2)').onclick = () => document.querySelector('.controls input[type="file"]').click();
-document.querySelector('.controls input[type="file"]').onchange = importEvents;
-document.querySelector('.controls button:nth-child(3)').onclick = clearEvents;
-eventListBackdrop.onclick = () => eventListBackdrop.style.display = 'none';
-
 function renderCalendar() {
   calendarEl.innerHTML = '';
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   for (let m = 0; m < 12; m++) {
     const monthEl = document.createElement('div');
     monthEl.className = 'month';
@@ -286,11 +174,9 @@ function renderCalendar() {
     daysEl.className = 'days';
     const firstDay = new Date(year, m, 1).getDay();
     const totalDays = daysInMonth(m, year);
-    for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) {
-      daysEl.appendChild(document.createElement('div'));
-    }
+    for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) daysEl.appendChild(document.createElement('div'));
     for (let d = 1; d <= totalDays; d++) {
-      const dateKey = `${year}-${m + 1}-${d}`;
+      const dateKey = `${year}-${m+1}-${d}`;
       const dayEl = document.createElement('div');
       dayEl.className = 'day';
       dayEl.textContent = d;
@@ -303,28 +189,44 @@ function renderCalendar() {
         dayEl.appendChild(bar);
       });
       dayEl.addEventListener('click', () => {
-        if (!isTouchDevice || dayEvents.length === 0) {
-          openModal(dateKey);
-        } else {
-          showEventList(dateKey);
-        }
+        if (isTouchDevice && dayEvents.length) return;
+        openModal(dateKey);
       });
-      dayEl.addEventListener('contextmenu', e => e.preventDefault());
-      dayEl.addEventListener('touchstart', e => {
-        e.stopPropagation();
-        dayEl._touchTimer = setTimeout(() => {
-          openModal(dateKey);
-        }, 600);
-      });
-      dayEl.addEventListener('touchend', () => {
-        clearTimeout(dayEl._touchTimer);
-      });
+      if (!isTouchDevice && dayEvents.length) {
+        dayEl.addEventListener('mouseenter', e => {
+          tooltip.innerHTML = dayEvents.map((e, i) => `<div>• ${e.title}</div>`).join('');
+          tooltip.style.left = e.pageX + 10 + 'px';
+          tooltip.style.top = e.pageY + 'px';
+          tooltip.style.display = 'block';
+        });
+        dayEl.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+      }
+      if (isTouchDevice) {
+        dayEl.addEventListener('touchstart', e => {
+          dayEl._touchTimer = setTimeout(() => openModal(dateKey), 600);
+        });
+        dayEl.addEventListener('touchend', () => clearTimeout(dayEl._touchTimer));
+      }
       daysEl.appendChild(dayEl);
     }
     monthEl.appendChild(daysEl);
     calendarEl.appendChild(monthEl);
   }
 }
+
+function applyTheme(mode) {
+  if (mode === 'auto') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+  } else {
+    document.documentElement.setAttribute('data-theme', mode);
+  }
+  localStorage.setItem('calendarTheme', mode);
+}
+
+themeSelector.value = localStorage.getItem('calendarTheme') || 'auto';
+themeSelector.onchange = () => applyTheme(themeSelector.value);
+applyTheme(themeSelector.value);
 
 renderCalendar();
 </script>
