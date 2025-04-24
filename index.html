@@ -52,6 +52,7 @@
       position: relative;
       cursor: pointer;
       font-size: 0.8rem;
+      touch-action: manipulation;
     }
     .event-bar {
       position: absolute;
@@ -302,11 +303,21 @@ function renderCalendar() {
         dayEl.appendChild(bar);
       });
       dayEl.addEventListener('click', () => {
-        if (dayEvents.length > 0) {
-          showEventList(dateKey);
-        } else {
+        if (!isTouchDevice || dayEvents.length === 0) {
           openModal(dateKey);
+        } else {
+          showEventList(dateKey);
         }
+      });
+      dayEl.addEventListener('contextmenu', e => e.preventDefault());
+      dayEl.addEventListener('touchstart', e => {
+        e.stopPropagation();
+        dayEl._touchTimer = setTimeout(() => {
+          openModal(dateKey);
+        }, 600);
+      });
+      dayEl.addEventListener('touchend', () => {
+        clearTimeout(dayEl._touchTimer);
       });
       daysEl.appendChild(dayEl);
     }
