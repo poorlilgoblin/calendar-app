@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,19 +14,62 @@
     .month { background: #fff; border: 1px solid #ddd; border-radius: 8px; width: 300px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .month h3 { text-align: center; margin: 0.5rem 0; }
     .days { display: grid; grid-template-columns: repeat(7, 1fr); }
-    .day { border: 1px solid #eee; min-height: 60px; padding: 4px; position: relative; cursor: pointer; font-size: 0.8rem; touch-action: manipulation; }
+    .day { border: 1px solid #eee; min-height: 60px; padding: 4px; position: relative; cursor: pointer; font-size: 0.8rem; }
     .event-bar { position: absolute; height: 6px; border-radius: 3px; left: 2px; right: 2px; }
-    .tooltip { position: absolute; background: #222; color: #fff; padding: 6px; border-radius: 4px; font-size: 0.75rem; display: none; z-index: 999; max-width: 200px; pointer-events: none; }
+    .tooltip { position: absolute; background: #222; color: #fff; padding: 6px; border-radius: 4px; font-size: 0.75rem; display: none; z-index: 999; max-width: 200px; }
     .modal-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; z-index: 1000; }
     .modal { background: #fff; padding: 20px; border-radius: 10px; width: 300px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     .modal h2 { margin-top: 0; }
     .modal input[type="text"] { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
     .modal-actions { display: flex; justify-content: space-between; }
     .modal-actions button { flex: 1; margin: 0 5px; padding: 8px; font-weight: bold; }
-  </style>
+  
+  body.dark {
+    background-color: #121212;
+    color: #eee;
+  }
+  body.dark .month {
+    background: #1e1e1e;
+    border-color: #444;
+    box-shadow: 0 2px 4px rgba(255,255,255,0.05);
+  }
+  body.dark .day {
+    border-color: #333;
+  }
+  body.dark .tooltip {
+    background: #444;
+  }
+  body.dark .modal {
+    background: #222;
+    color: #fff;
+  }
+  body.dark .modal input[type="text"] {
+    background: #333;
+    color: white;
+    border-color: #555;
+  }
+  body.dark .modal-actions button {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+  }
+</style>
 </head>
 <body>
-  <h1>Year Calendar (2025)</h1>
+  <h1>Year Calendar (2025)
+  <div class="theme-controls">
+    <label for="themeMode">Theme Control:</label>
+    <select id="themeMode">
+      <option value="system">System</option>
+      <option value="time">Time-Based</option>
+      <option value="manual">Manual</option>
+    </select>
+    <label id="manualToggleWrapper" style="display:none;">
+      <input type="checkbox" id="manualToggle"> Dark Mode
+    </label>
+  </div>
+</h1>
+
   <div class="controls">
     <button id="exportBtn">Export</button>
     <button id="importBtn">Import</button>
@@ -59,9 +103,9 @@ let currentDateKey = null;
 let editingIndex = null;
 let tooltipTimer = null;
 
-const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 const year = 2025;
-const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const months = ["January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"];
 
 function daysInMonth(month, year) {
   return new Date(year, month + 1, 0).getDate();
@@ -83,7 +127,7 @@ function closeModal() {
   editingIndex = null;
 }
 
-document.getElementById('saveEvent').onclick = function() {
+function saveEvent() {
   const title = eventTitle.value.trim();
   const color = eventColor.value.trim() || 'purple';
   if (!title || !currentDateKey) return;
@@ -95,20 +139,196 @@ document.getElementById('saveEvent').onclick = function() {
   }
   localStorage.setItem('calendarEvents', JSON.stringify(events));
   closeModal();
-  renderCalendar();
-};
+  
+tooltip.addEventListener('mouseenter', () => {
+  clearTimeout(tooltipTimer);
+});
+tooltip.addEventListener('mouseleave', () => {
+  hideTooltip();
+});
 
-document.getElementById('deleteEvent').onclick = function() {
+renderCalendar();
+
+// Theme control
+function applyTheme(mode) {
+  const now = new Date();
+  const hour = now.getHours();
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  let useDark = false;
+  if (mode === 'time') {
+    useDark = hour < 6 || hour >= 19;
+  } else if (mode === 'manual') {
+    useDark = document.getElementById('manualToggle').checked;
+  } else if (mode === 'system') {
+    useDark = prefersDark;
+  }
+
+  document.body.classList.toggle('dark', useDark);
+}
+
+function initThemeControls() {
+  const modeSelect = document.getElementById('themeMode');
+  const manualToggle = document.getElementById('manualToggle');
+  const manualWrapper = document.getElementById('manualToggleWrapper');
+
+  const savedMode = localStorage.getItem('themeMode') || 'system';
+  const savedManual = localStorage.getItem('manualDark') === 'true';
+
+  modeSelect.value = savedMode;
+  manualToggle.checked = savedManual;
+
+  function updateTheme() {
+    const mode = modeSelect.value;
+    const isManual = mode === 'manual';
+    manualWrapper.style.display = isManual ? 'inline' : 'none';
+
+    localStorage.setItem('themeMode', mode);
+    localStorage.setItem('manualDark', manualToggle.checked);
+    applyTheme(mode);
+  }
+
+  modeSelect.onchange = updateTheme;
+  manualToggle.onchange = updateTheme;
+
+  updateTheme();
+}
+
+initThemeControls();
+
+}
+
+function deleteEvent() {
   if (editingIndex !== null && events[currentDateKey]) {
     events[currentDateKey].splice(editingIndex, 1);
     if (events[currentDateKey].length === 0) delete events[currentDateKey];
     localStorage.setItem('calendarEvents', JSON.stringify(events));
   }
   closeModal();
-  renderCalendar();
-};
+  
+tooltip.addEventListener('mouseenter', () => {
+  clearTimeout(tooltipTimer);
+});
+tooltip.addEventListener('mouseleave', () => {
+  hideTooltip();
+});
 
-document.getElementById('exportBtn').onclick = function() {
+renderCalendar();
+
+// Theme control
+function applyTheme(mode) {
+  const now = new Date();
+  const hour = now.getHours();
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  let useDark = false;
+  if (mode === 'time') {
+    useDark = hour < 6 || hour >= 19;
+  } else if (mode === 'manual') {
+    useDark = document.getElementById('manualToggle').checked;
+  } else if (mode === 'system') {
+    useDark = prefersDark;
+  }
+
+  document.body.classList.toggle('dark', useDark);
+}
+
+function initThemeControls() {
+  const modeSelect = document.getElementById('themeMode');
+  const manualToggle = document.getElementById('manualToggle');
+  const manualWrapper = document.getElementById('manualToggleWrapper');
+
+  const savedMode = localStorage.getItem('themeMode') || 'system';
+  const savedManual = localStorage.getItem('manualDark') === 'true';
+
+  modeSelect.value = savedMode;
+  manualToggle.checked = savedManual;
+
+  function updateTheme() {
+    const mode = modeSelect.value;
+    const isManual = mode === 'manual';
+    manualWrapper.style.display = isManual ? 'inline' : 'none';
+
+    localStorage.setItem('themeMode', mode);
+    localStorage.setItem('manualDark', manualToggle.checked);
+    applyTheme(mode);
+  }
+
+  modeSelect.onchange = updateTheme;
+  manualToggle.onchange = updateTheme;
+
+  updateTheme();
+}
+
+initThemeControls();
+
+}
+
+function clearEvents() {
+  if (confirm("Clear all events?")) {
+    events = {};
+    localStorage.setItem('calendarEvents', '{}');
+    
+tooltip.addEventListener('mouseenter', () => {
+  clearTimeout(tooltipTimer);
+});
+tooltip.addEventListener('mouseleave', () => {
+  hideTooltip();
+});
+
+renderCalendar();
+
+// Theme control
+function applyTheme(mode) {
+  const now = new Date();
+  const hour = now.getHours();
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  let useDark = false;
+  if (mode === 'time') {
+    useDark = hour < 6 || hour >= 19;
+  } else if (mode === 'manual') {
+    useDark = document.getElementById('manualToggle').checked;
+  } else if (mode === 'system') {
+    useDark = prefersDark;
+  }
+
+  document.body.classList.toggle('dark', useDark);
+}
+
+function initThemeControls() {
+  const modeSelect = document.getElementById('themeMode');
+  const manualToggle = document.getElementById('manualToggle');
+  const manualWrapper = document.getElementById('manualToggleWrapper');
+
+  const savedMode = localStorage.getItem('themeMode') || 'system';
+  const savedManual = localStorage.getItem('manualDark') === 'true';
+
+  modeSelect.value = savedMode;
+  manualToggle.checked = savedManual;
+
+  function updateTheme() {
+    const mode = modeSelect.value;
+    const isManual = mode === 'manual';
+    manualWrapper.style.display = isManual ? 'inline' : 'none';
+
+    localStorage.setItem('themeMode', mode);
+    localStorage.setItem('manualDark', manualToggle.checked);
+    applyTheme(mode);
+  }
+
+  modeSelect.onchange = updateTheme;
+  manualToggle.onchange = updateTheme;
+
+  updateTheme();
+}
+
+initThemeControls();
+
+  }
+}
+
+function exportEvents() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(events));
   const anchor = document.createElement('a');
   anchor.href = dataStr;
@@ -116,25 +336,78 @@ document.getElementById('exportBtn').onclick = function() {
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
-};
+}
 
-document.getElementById('importBtn').onclick = () => fileInput.click();
-fileInput.onchange = function(e) {
+function importEvents(e) {
+  const file = e.target.files[0];
   const reader = new FileReader();
   reader.onload = function(evt) {
     try {
       events = JSON.parse(evt.target.result);
       localStorage.setItem('calendarEvents', JSON.stringify(events));
-      renderCalendar();
+      
+tooltip.addEventListener('mouseenter', () => {
+  clearTimeout(tooltipTimer);
+});
+tooltip.addEventListener('mouseleave', () => {
+  hideTooltip();
+});
+
+renderCalendar();
+
+// Theme control
+function applyTheme(mode) {
+  const now = new Date();
+  const hour = now.getHours();
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  let useDark = false;
+  if (mode === 'time') {
+    useDark = hour < 6 || hour >= 19;
+  } else if (mode === 'manual') {
+    useDark = document.getElementById('manualToggle').checked;
+  } else if (mode === 'system') {
+    useDark = prefersDark;
+  }
+
+  document.body.classList.toggle('dark', useDark);
+}
+
+function initThemeControls() {
+  const modeSelect = document.getElementById('themeMode');
+  const manualToggle = document.getElementById('manualToggle');
+  const manualWrapper = document.getElementById('manualToggleWrapper');
+
+  const savedMode = localStorage.getItem('themeMode') || 'system';
+  const savedManual = localStorage.getItem('manualDark') === 'true';
+
+  modeSelect.value = savedMode;
+  manualToggle.checked = savedManual;
+
+  function updateTheme() {
+    const mode = modeSelect.value;
+    const isManual = mode === 'manual';
+    manualWrapper.style.display = isManual ? 'inline' : 'none';
+
+    localStorage.setItem('themeMode', mode);
+    localStorage.setItem('manualDark', manualToggle.checked);
+    applyTheme(mode);
+  }
+
+  modeSelect.onchange = updateTheme;
+  manualToggle.onchange = updateTheme;
+
+  updateTheme();
+}
+
+initThemeControls();
+
     } catch {
       alert("Invalid file format.");
     }
   };
-  reader.readAsText(e.target.files[0]);
-};
-
-tooltip.addEventListener('mouseenter', () => clearTimeout(tooltipTimer));
-tooltip.addEventListener('mouseleave', () => hideTooltip());
+  reader.readAsText(file);
+}
 
 function showTooltip(elements, x, y) {
   tooltip.innerHTML = '';
@@ -146,7 +419,7 @@ function showTooltip(elements, x, y) {
 
 function hideTooltip() {
   tooltip.style.display = 'none';
-  clearTimeout(tooltipTimer);
+clearTimeout(tooltipTimer);
 }
 
 function renderCalendar() {
@@ -177,31 +450,27 @@ function renderCalendar() {
         dayEl.appendChild(bar);
       });
 
-      if (isTouchDevice) {
-        dayEl.addEventListener('touchstart', e => {
-          dayEl._touchTimer = setTimeout(() => openModal(dateKey), 600);
+      dayEl.addEventListener('click', () => openModal(dateKey));
+
+      if (dayEvents.length) {
+        dayEl.addEventListener('mouseenter', e => {
+          const tooltipItems = dayEvents.map((evt, i) => {
+            const item = document.createElement('div');
+            item.textContent = '• ' + evt.title;
+            item.style.cursor = 'pointer';
+            item.onclick = () => {
+              openModal(dateKey, i);
+              hideTooltip();
+            };
+            return item;
+          });
+          showTooltip(tooltipItems, e.pageX + 10, e.pageY);
         });
-        dayEl.addEventListener('touchend', () => clearTimeout(dayEl._touchTimer));
-      } else {
-        dayEl.addEventListener('click', () => openModal(dateKey));
-        if (dayEvents.length) {
-          dayEl.addEventListener('mouseenter', e => {
-            const tooltipItems = dayEvents.map((evt, i) => {
-              const item = document.createElement('div');
-              item.textContent = '• ' + evt.title;
-              item.style.cursor = 'pointer';
-              item.onclick = () => {
-                openModal(dateKey, i);
-                hideTooltip();
-              };
-              return item;
-            });
-            showTooltip(tooltipItems, e.pageX + 10, e.pageY);
-          });
-          dayEl.addEventListener('mouseleave', () => {
-            tooltipTimer = setTimeout(() => hideTooltip(), 300);
-          });
-        }
+        dayEl.addEventListener('mouseleave', () => {
+    tooltipTimer = setTimeout(() => {
+      hideTooltip();
+    }, 300);
+  });
       }
 
       daysEl.appendChild(dayEl);
@@ -210,7 +479,72 @@ function renderCalendar() {
     calendarEl.appendChild(monthEl);
   }
 }
+
+document.getElementById('saveEvent').onclick = saveEvent;
+document.getElementById('deleteEvent').onclick = deleteEvent;
+document.getElementById('exportBtn').onclick = exportEvents;
+document.getElementById('importBtn').onclick = () => fileInput.click();
+fileInput.onchange = importEvents;
+document.getElementById('clearBtn').onclick = clearEvents;
+modalBackdrop.onclick = e => { if (e.target === modalBackdrop) closeModal(); };
+
+
+tooltip.addEventListener('mouseenter', () => {
+  clearTimeout(tooltipTimer);
+});
+tooltip.addEventListener('mouseleave', () => {
+  hideTooltip();
+});
+
 renderCalendar();
+
+// Theme control
+function applyTheme(mode) {
+  const now = new Date();
+  const hour = now.getHours();
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  let useDark = false;
+  if (mode === 'time') {
+    useDark = hour < 6 || hour >= 19;
+  } else if (mode === 'manual') {
+    useDark = document.getElementById('manualToggle').checked;
+  } else if (mode === 'system') {
+    useDark = prefersDark;
+  }
+
+  document.body.classList.toggle('dark', useDark);
+}
+
+function initThemeControls() {
+  const modeSelect = document.getElementById('themeMode');
+  const manualToggle = document.getElementById('manualToggle');
+  const manualWrapper = document.getElementById('manualToggleWrapper');
+
+  const savedMode = localStorage.getItem('themeMode') || 'system';
+  const savedManual = localStorage.getItem('manualDark') === 'true';
+
+  modeSelect.value = savedMode;
+  manualToggle.checked = savedManual;
+
+  function updateTheme() {
+    const mode = modeSelect.value;
+    const isManual = mode === 'manual';
+    manualWrapper.style.display = isManual ? 'inline' : 'none';
+
+    localStorage.setItem('themeMode', mode);
+    localStorage.setItem('manualDark', manualToggle.checked);
+    applyTheme(mode);
+  }
+
+  modeSelect.onchange = updateTheme;
+  manualToggle.onchange = updateTheme;
+
+  updateTheme();
+}
+
+initThemeControls();
+
 </script>
 </body>
 </html>
