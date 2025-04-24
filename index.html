@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Year Calendar</title>
   <link rel="manifest" href="manifest.json">
   <style>
@@ -22,7 +22,6 @@
       margin: 0;
       background-color: var(--bg);
       color: var(--text);
-      transition: background 0.3s, color 0.3s;
     }
     h1 {
       text-align: center;
@@ -46,7 +45,6 @@
       border-radius: 8px;
       width: 300px;
       padding: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .month h3 {
       text-align: center;
@@ -81,7 +79,6 @@
       font-size: 0.75rem;
       display: none;
       z-index: 999;
-      max-width: 200px;
       pointer-events: none;
     }
     .modal-backdrop, .event-list-backdrop {
@@ -102,7 +99,6 @@
       width: 300px;
       max-height: 80vh;
       overflow-y: auto;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
     .modal h2, .event-list-modal h3 {
       margin-top: 0;
@@ -122,16 +118,15 @@
       flex: 1;
       margin: 0 5px;
       padding: 8px;
-      font-weight: bold;
     }
     .event-list-modal ul {
       padding: 0;
       list-style: none;
     }
     .event-list-modal li {
-      margin: 8px 0;
       padding: 8px;
-      background: #eee;
+      margin-bottom: 6px;
+      background: #ccc;
       border-radius: 4px;
       cursor: pointer;
     }
@@ -172,8 +167,22 @@
     </div>
   </div>
 <script>
-// Dark mode
+const calendarEl = document.getElementById('calendar');
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modalTitle = document.getElementById('modalTitle');
+const eventTitle = document.getElementById('eventTitle');
+const eventColor = document.getElementById('eventColor');
+const tooltip = document.getElementById('tooltip');
 const themeSelector = document.getElementById('themeSelector');
+const eventListBackdrop = document.getElementById('eventListBackdrop');
+const eventListDate = document.getElementById('eventListDate');
+const eventList = document.getElementById('eventList');
+
+let events = JSON.parse(localStorage.getItem('calendarEvents') || '{}');
+let currentDateKey = null;
+let editingIndex = null;
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
 function applyTheme(mode) {
   if (mode === 'auto') {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -183,11 +192,152 @@ function applyTheme(mode) {
   }
   localStorage.setItem('calendarTheme', mode);
 }
+
 const savedTheme = localStorage.getItem('calendarTheme') || 'auto';
 themeSelector.value = savedTheme;
 applyTheme(savedTheme);
 themeSelector.onchange = () => applyTheme(themeSelector.value);
+
+function openModal(dateKey, index = null) {
+  currentDateKey = dateKey;
+  editingIndex = index;
+  const evt = (events[dateKey] && events[dateKey][index]) || { title: '', color: '' };
+  eventTitle.value = evt.title;
+  eventColor.value = evt.color;
+  modalTitle.textContent = index !== null ? 'Edit Event' : 'New Event';
+  modalBackdrop.style.display = 'flex';
+}
+function closeModal() {
+  modalBackdrop.style.display = 'none';
+  currentDateKey = null;
+  editingIndex = null;
+}
+document.getElementById('saveEvent').onclick = () => {
+  const title = eventTitle.value.trim();
+  const color = eventColor.value.trim() || 'purple';
+  if (!title || !currentDateKey) return;
+  if (!events[currentDateKey]) events[currentDateKey] = [];
+  if (editingIndex !== null) {
+    events[currentDateKey][editingIndex] = { title, color };
+  } else {
+    events[currentDateKey].push({ title, color });
+  }
+  localStorage.setItem('calendarEvents', JSON.stringify(events));
+  closeModal();
+  renderCalendar();
+};
+document.getElementById('deleteEvent').onclick = () => {
+  if (editingIndex !== null && events[currentDateKey]) {
+    events[currentDateKey].splice(editingIndex, 1);
+    if (events[currentDateKey].length === 0) delete events[currentDateKey];
+    localStorage.setItem('calendarEvents', JSON.stringify(events));
+  }
+  closeModal();
+  renderCalendar();
+};
+document.getElementById('clearBtn').onclick = () => {
+  if (confirm('Clear all events?')) {
+    events = {};
+    localStorage.setItem('calendarEvents', '{}');
+    renderCalendar();
+  }
+};
+document.getElementById('exportBtn').onclick = () => {
+  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(events));
+  const a = document.createElement('a');
+  a.href = dataStr;
+  a.download = 'calendar_events.json';
+  a.click();
+};
+document.getElementById('importBtn').onclick = () => {
+  document.getElementById('importFile').click();
+};
+document.getElementById('importFile').onchange = e => {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      events = JSON.parse(reader.result);
+      localStorage.setItem('calendarEvents', JSON.stringify(events));
+      renderCalendar();
+    } catch {
+      alert('Invalid file');
+    }
+  };
+  reader.readAsText(file);
+};
+
+function showEventList(dateKey) {
+  const list = events[dateKey] || [];
+  eventListDate.textContent = dateKey;
+  eventList.innerHTML = '';
+  list.forEach((evt, i) => {
+    const li = document.createElement('li');
+    li.textContent = evt.title;
+    li.onclick = () => {
+      openModal(dateKey, i);
+      eventListBackdrop.style.display = 'none';
+    };
+    eventList.appendChild(li);
+  });
+  eventListBackdrop.style.display = 'flex';
+}
+eventListBackdrop.onclick = () => eventListBackdrop.style.display = 'none';
+
+function renderCalendar() {
+  calendarEl.innerHTML = '';
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  for (let m = 0; m < 12; m++) {
+    const monthEl = document.createElement('div');
+    monthEl.className = 'month';
+    monthEl.innerHTML = `<h3>${months[m]}</h3>`;
+    const daysEl = document.createElement('div');
+    daysEl.className = 'days';
+    const firstDay = new Date(2025, m, 1).getDay();
+    const totalDays = new Date(2025, m+1, 0).getDate();
+    for (let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++) daysEl.appendChild(document.createElement('div'));
+    for (let d = 1; d <= totalDays; d++) {
+      const dateKey = `2025-${m+1}-${d}`;
+      const dayEl = document.createElement('div');
+      dayEl.className = 'day';
+      dayEl.textContent = d;
+      const dayEvents = events[dateKey] || [];
+      dayEvents.forEach((evt, i) => {
+        const bar = document.createElement('div');
+        bar.className = 'event-bar';
+        bar.style.bottom = `${2 + i * 8}px`;
+        bar.style.backgroundColor = evt.color || 'purple';
+        dayEl.appendChild(bar);
+      });
+      if (!isTouchDevice && dayEvents.length) {
+        dayEl.addEventListener('mouseenter', e => {
+          tooltip.innerHTML = dayEvents.map(e => `<div>• ${e.title}</div>`).join('');
+          tooltip.style.left = e.pageX + 10 + 'px';
+          tooltip.style.top = e.pageY + 'px';
+          tooltip.style.display = 'block';
+        });
+        dayEl.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+      }
+      dayEl.addEventListener('click', () => {
+        if (!isTouchDevice || dayEvents.length === 0) {
+          openModal(dateKey);
+        } else {
+          showEventList(dateKey);
+        }
+      });
+      if (isTouchDevice) {
+        dayEl.addEventListener('touchstart', e => {
+          dayEl._touchTimer = setTimeout(() => openModal(dateKey), 600);
+        });
+        dayEl.addEventListener('touchend', () => clearTimeout(dayEl._touchTimer));
+      }
+      daysEl.appendChild(dayEl);
+    }
+    monthEl.appendChild(daysEl);
+    calendarEl.appendChild(monthEl);
+  }
+}
+renderCalendar();
 </script>
-<!-- Calendar JS would follow below this comment, not fully shown here for brevity -->
 </body>
 </html>
