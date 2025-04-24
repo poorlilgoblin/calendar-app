@@ -50,8 +50,7 @@
       <label for="interactionMode">Interaction:</label>
       <select id="interactionMode">
         <option value="classic">Classic</option>
-        <option value="tap-list">Tap for List</option>
-        <option value="long-press">Long-Press</option>
+        <option value="tap-list">Tap for List + Long-Press to Add</option>
       </select>
     </div>
   </div>
@@ -97,7 +96,7 @@ const months = ["January","February","March","April","May","June","July","August
 let events = JSON.parse(localStorage.getItem('calendarEvents')||'{}');
 let currentDateKey = null, editingIndex = null;
 
-// Tooltip hover persistence
+// Tooltip persistence
 tooltip.addEventListener('mouseenter', () => clearTimeout(tooltipTimer));
 tooltip.addEventListener('mouseleave', () => hideTooltip());
 
@@ -171,27 +170,29 @@ closeListBtn.onclick = () => modalBackdrop.style.display='none';
 function showListModal(dateKey) {
   const list = events[dateKey]||[];
   document.getElementById('listDate').textContent = dateKey;
-  eventList.innerHTML = '';
+  document.getElementById('eventList').innerHTML = '';
   list.forEach((ev,i) => {
     const li = document.createElement('li'); li.textContent = ev.title;
-    li.onclick = () => { openModal(dateKey,i); };
+    li.onclick = () => { openModal(dateKey,i); hideTooltip(); };
     document.getElementById('eventList').appendChild(li);
   });
   eventModal.style.display='none'; listModal.style.display='block'; modalBackdrop.style.display='flex';
 }
 function hideListModal() { listModal.style.display='none'; }
 
-// Interaction listeners
+// Interaction listeners merged
 function attachInteractions(dayEl, dateKey) {
   const mode = interactionSelect.value;
-  dayEl.onclick = dayEl.onmousedown = dayEl.onmouseup = dayEl.ontouchstart = dayEl.ontouchend = null;
-  if (mode==='tap-list') {
+  dayEl.onclick = dayEl.ontouchstart = dayEl.ontouchend = null;
+  if (mode === 'tap-list') {
+    // Tap shows list or new modal if no events
     dayEl.onclick = () => events[dateKey] ? showListModal(dateKey) : openModal(dateKey);
-  } else if (mode==='long-press') {
+    // Long-press always adds new
     let timer;
-    dayEl.ontouchstart = dayEl.onmousedown = () => { timer = setTimeout(() => openModal(dateKey),600); };
+    dayEl.ontouchstart = dayEl.onmousedown = () => { timer = setTimeout(() => openModal(dateKey), 600); };
     dayEl.ontouchend = dayEl.onmouseup = () => { clearTimeout(timer); };
   } else {
+    // Classic: tap to add/edit
     dayEl.onclick = () => openModal(dateKey);
   }
 }
