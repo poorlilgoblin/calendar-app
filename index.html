@@ -20,7 +20,7 @@
     .modal { background: #fff; padding: 20px; border-radius: 10px; width: 300px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     /* List modal adjustments */
     #listModal ul { list-style: none; padding: 0; margin: 0; }
-    #listModal ul li { padding: 8px 0; border-bottom: 1px solid #eee; }
+    #listModal ul li { padding: 12px 0; border-bottom: 1px solid #eee; }
     #listModal ul li:last-child { border-bottom: none; }
     .modal h2 { margin-top: 0; }
     .modal input[type="text"] { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
@@ -124,33 +124,3 @@ function initTheme() {
 }
 function updateTheme() {
   localStorage.setItem('themeMode', document.getElementById('themeMode').value);
-  localStorage.setItem('manualDark', document.getElementById('manualToggle').checked);
-  document.getElementById('manualToggleWrapper').style.display = document.getElementById('themeMode').value==='manual'? 'inline':'none';
-  applyTheme(document.getElementById('themeMode').value);
-}
-
-function initInteraction() {
-  interactionSelect.value=savedInteraction;
-  interactionSelect.onchange = () => localStorage.setItem('interactionMode', interactionSelect.value);
-  if (window.matchMedia('(max-width: 768px)').matches) fab.style.display='flex';
-  fab.onclick = () => openModal(getDateKey(new Date()));
-}
-
-// Utilities
-function getDateKey(date){ return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`; }
-function daysInMonth(m,y){ return new Date(y,m+1,0).getDate(); }
-
-// Modal handlers
-function openModal(dateKey, index=null) {
-  hideListModal(); currentDateKey = dateKey; editingIndex = index;
-  const evt = (events[dateKey]||[])[index]||{title:'',color:''};
-  modalTitle.textContent = index!==null ? 'Edit Event' : 'New Event';
-  eventTitle.value = evt.title; eventColor.value = evt.color;
-  listModal.style.display='none'; eventModal.style.display='block'; modalBackdrop.style.display='flex';
-}
-function closeModal() { modalBackdrop.style.display='none'; currentDateKey=null; editingIndex=null; }
-function saveEvent() {
-  if (!currentDateKey || !eventTitle.value.trim()) return;
-  const title = eventTitle.value.trim(), color = eventColor.value || 'purple';
-  events[currentDateKey] = events[currentDateKey]||[];
-  if (editingIndex!==null) events[currentDateKey][editingIndex] = {title,color};
