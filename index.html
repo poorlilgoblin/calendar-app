@@ -23,6 +23,12 @@
     .modal-actions { display: flex; justify-content: space-between; }
     .modal-actions button { flex: 1; margin: 0 5px; padding: 8px; font-weight: bold; }
     #addFab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: #6200ee; color: #fff; border: none; font-size: 2rem; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 1000; }
+
+    /* Spread list items vertically */
+    #listModal ul { list-style: none; padding: 0; margin: 0; }
+    #listModal ul li { padding: 16px 0; border-bottom: 1px solid #eee; }
+    #listModal ul li:last-child { border-bottom: none; }
+
     body.dark { background-color: #121212; color: #eee; }
     body.dark .month { background: #1e1e1e; border-color: #444; box-shadow: 0 2px 4px rgba(255,255,255,0.05); }
     body.dark .day { border-color: #333; }
@@ -50,7 +56,7 @@
       <label for="interactionMode">Interaction:</label>
       <select id="interactionMode">
         <option value="classic">Classic</option>
-        <option value="tap-list">Tap for List + Long-Press to Add</option>
+        <option value="tap-list">Mobile</option>
       </select>
     </div>
   </div>
@@ -185,14 +191,11 @@ function attachInteractions(dayEl, dateKey) {
   const mode = interactionSelect.value;
   dayEl.onclick = dayEl.ontouchstart = dayEl.ontouchend = null;
   if (mode === 'tap-list') {
-    // Tap shows list or new modal if no events
     dayEl.onclick = () => events[dateKey] ? showListModal(dateKey) : openModal(dateKey);
-    // Long-press always adds new
     let timer;
     dayEl.ontouchstart = dayEl.onmousedown = () => { timer = setTimeout(() => openModal(dateKey), 600); };
     dayEl.ontouchend = dayEl.onmouseup = () => { clearTimeout(timer); };
   } else {
-    // Classic: tap to add/edit
     dayEl.onclick = () => openModal(dateKey);
   }
 }
