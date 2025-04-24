@@ -71,7 +71,7 @@
       z-index: 999;
       max-width: 200px;
     }
-    .modal-backdrop {
+    .modal-backdrop, .event-list-backdrop {
       position: fixed;
       top: 0; left: 0;
       width: 100vw;
@@ -82,14 +82,16 @@
       justify-content: center;
       z-index: 1000;
     }
-    .modal {
+    .modal, .event-list-modal {
       background: #fff;
       padding: 20px;
       border-radius: 10px;
       width: 300px;
+      max-height: 80vh;
+      overflow-y: auto;
       box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
-    .modal h2 {
+    .modal h2, .event-list-modal h3 {
       margin-top: 0;
     }
     .modal input[type="text"] {
@@ -109,6 +111,17 @@
       padding: 8px;
       font-weight: bold;
     }
+    .event-list-modal ul {
+      padding: 0;
+      list-style: none;
+    }
+    .event-list-modal li {
+      margin: 8px 0;
+      padding: 8px;
+      background: #eee;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -122,7 +135,6 @@
   <div class="calendar" id="calendar"></div>
   <div class="tooltip" id="tooltip"></div>
 
-  <!-- Modal -->
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal">
       <h2 id="modalTitle">New Event</h2>
@@ -134,6 +146,14 @@
       </div>
     </div>
   </div>
+
+  <div class="event-list-backdrop" id="eventListBackdrop">
+    <div class="event-list-modal">
+      <h3>Events on <span id="eventListDate"></span></h3>
+      <ul id="eventList"></ul>
+    </div>
+  </div>
+
 <script>
 const calendarEl = document.getElementById('calendar');
 const modalBackdrop = document.getElementById('modalBackdrop');
@@ -141,6 +161,9 @@ const modalTitle = document.getElementById('modalTitle');
 const eventTitle = document.getElementById('eventTitle');
 const eventColor = document.getElementById('eventColor');
 const tooltip = document.getElementById('tooltip');
+const eventListBackdrop = document.getElementById('eventListBackdrop');
+const eventListDate = document.getElementById('eventListDate');
+const eventList = document.getElementById('eventList');
 
 let events = JSON.parse(localStorage.getItem('calendarEvents') || '{}');
 let currentDateKey = null;
@@ -148,10 +171,7 @@ let editingIndex = null;
 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
 const year = 2025;
-const months = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
+const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 function daysInMonth(month, year) {
   return new Date(year, month + 1, 0).getDate();
@@ -231,16 +251,29 @@ function importEvents(event) {
   reader.readAsText(file);
 }
 
-function showTooltip(content, x, y) {
-  tooltip.innerHTML = content;
-  tooltip.style.left = x + 'px';
-  tooltip.style.top = y + 'px';
-  tooltip.style.display = 'block';
+function showEventList(dateKey) {
+  const list = events[dateKey] || [];
+  eventListDate.textContent = dateKey;
+  eventList.innerHTML = '';
+  list.forEach((evt, i) => {
+    const li = document.createElement('li');
+    li.textContent = evt.title;
+    li.onclick = () => {
+      openModal(dateKey, i);
+      eventListBackdrop.style.display = 'none';
+    };
+    eventList.appendChild(li);
+  });
+  eventListBackdrop.style.display = 'flex';
 }
 
-function hideTooltip() {
-  tooltip.style.display = 'none';
-}
+document.getElementById('saveEvent').onclick = saveEvent;
+document.getElementById('deleteEvent').onclick = deleteEvent;
+document.querySelector('.controls button:nth-child(1)').onclick = exportEvents;
+document.querySelector('.controls button:nth-child(2)').onclick = () => document.querySelector('.controls input[type="file"]').click();
+document.querySelector('.controls input[type="file"]').onchange = importEvents;
+document.querySelector('.controls button:nth-child(3)').onclick = clearEvents;
+eventListBackdrop.onclick = () => eventListBackdrop.style.display = 'none';
 
 function renderCalendar() {
   calendarEl.innerHTML = '';
@@ -268,29 +301,19 @@ function renderCalendar() {
         bar.style.backgroundColor = evt.color || 'purple';
         dayEl.appendChild(bar);
       });
-      dayEl.addEventListener('click', () => openModal(dateKey));
-      if (dayEvents.length && !isTouchDevice) {
-        dayEl.addEventListener('mouseenter', e => {
-          const html = dayEvents.map((evt, i) =>
-            `<div onclick="openModal('${dateKey}', ${i})">• ${evt.title}</div>`
-          ).join('');
-          showTooltip(html, e.pageX + 10, e.pageY);
-        });
-        dayEl.addEventListener('mouseleave', hideTooltip);
-      }
+      dayEl.addEventListener('click', () => {
+        if (dayEvents.length > 0) {
+          showEventList(dateKey);
+        } else {
+          openModal(dateKey);
+        }
+      });
       daysEl.appendChild(dayEl);
     }
     monthEl.appendChild(daysEl);
     calendarEl.appendChild(monthEl);
   }
 }
-
-document.getElementById('saveEvent').onclick = saveEvent;
-document.getElementById('deleteEvent').onclick = deleteEvent;
-document.querySelector('.controls button:nth-child(1)').onclick = exportEvents;
-document.querySelector('.controls button:nth-child(2)').onclick = () => document.querySelector('.controls input[type="file"]').click();
-document.querySelector('.controls input[type="file"]').onchange = importEvents;
-document.querySelector('.controls button:nth-child(3)').onclick = clearEvents;
 
 renderCalendar();
 </script>
